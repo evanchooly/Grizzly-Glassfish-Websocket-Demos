@@ -13,9 +13,27 @@
     <groupId>com.antwerkz.wsdemos</groupId>
     <artifactId>war</artifactId>
     <version>1.0</version>
+    <packaging>war</packaging>
 
     <name>War!</name>
 
+    <build>
+        <finalName>ws-war</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+
+                <configuration>
+                    <mainClass>com.antwerkz.wsdemos.war.Main</mainClass>
+                    <classpathScope>test</classpathScope>
+                    <arguments>
+                        <argument>-Xmx512m</argument>
+                    </arguments>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
     <dependencies>
         <dependency>
             <groupId>com.sun.grizzly</groupId>

@@ -1,6 +1,7 @@
 package com.antwerkz.wsdemos.war;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import com.sun.grizzly.websockets.WebSocket;
@@ -49,9 +50,9 @@ public class Player {
         pieces.add(piece);
         for (int xIndex = 0; xIndex < dimensions[0]; xIndex++) {
             for (int yIndex = 0; yIndex < dimensions[1]; yIndex++) {
-                final int x = mapX + xIndex;
-                final int y = mapY + yIndex;
-                handlers[xIndex][yIndex] = new ActionHandler() {
+                final int x = xIndex;
+                final int y = yIndex;
+                handlers[mapX + xIndex][mapY + yIndex] = new ActionHandler() {
                     @Override
                     public Result strike() {
                         piece.strike(x, y);
@@ -61,7 +62,21 @@ public class Player {
             }
         }
         ready = pieces.size() == Type.values().length;
+//        dump();
         return ready ? Result.READY : Result.PLACED;
+    }
+
+    private void dump() {
+        char[] chars = new char[WarGame.DIMENSION];
+        Arrays.fill(chars, '-');
+        System.out.println(new String(chars));
+        for (ActionHandler[] handler : handlers) {
+            for (ActionHandler actionHandler : handler) {
+                System.out.print(actionHandler.getClass().isAnonymousClass() ? "X" : "O");
+            }
+            System.out.println();
+        }
+        System.out.println(new String(chars));
     }
 
     public Result strike(int x, int y) {

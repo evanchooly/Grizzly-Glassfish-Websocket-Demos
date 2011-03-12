@@ -11,17 +11,29 @@ import com.sun.grizzly.websockets.WebSocket;
 import com.sun.grizzly.websockets.WebSocketApplication;
 
 public class WarGame extends WebSocketApplication {
-    public static final int DIMENSION = 64;
-    Map<WebSocket, Player> players = new ConcurrentHashMap<WebSocket, Player>();
+    public static final int DIMENSION = 25;
+    
+    private Map<WebSocket, Player> players = new ConcurrentHashMap<WebSocket, Player>();
 
-    public Result strike(WebSocket player, int x, int y) {
-        return players.get(player).strike(x, y);
+    @Override
+    public void onClose(final WebSocket socket) throws IOException {
+        super.onClose(socket);
+        players.remove(socket);
     }
 
     @Override
     public void onConnect(final WebSocket socket) {
-        if (players.put(socket, new Player(socket)) == null) {
+        if (players.size() < 2 && players.put(socket, new Player(socket)) == null) {
             super.onConnect(socket);
+            final Player opponent = getOpponent(socket);
+            if(opponent != null) {
+                try {
+                    socket.send("ready:opponent");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    throw new RuntimeException(e.getMessage(), e);
+                }
+            }
         } else {
             try {
                 socket.close();
@@ -34,10 +46,14 @@ public class WarGame extends WebSocketApplication {
 
     @Override
     public void onMessage(final WebSocket socket, final DataFrame frame) throws IOException {
-        final String[] payload = frame.getTextPayload().split(":");
+        final String textPayload = frame.getTextPayload();
+//        System.out.println("textPayload = " + textPayload);
+        final String[] payload = textPayload.split(":");
+//        System.out.println("payload = " + Arrays.toString(payload));
         int index = 0;
         Result result;
         final String operation = payload[index++];
+//        System.out.println("operation = '" + operation + "'");
         Type type = null;
         final int x;
         final int y;
@@ -47,38 +63,58 @@ public class WarGame extends WebSocketApplication {
             y = Integer.parseInt(payload[index++]);
             result = getPlayer(socket)
                 .place(type, x, y);
-        } else /*if ("strike".equals(operation)) */ {
+            respond(socket, result, type, x, y);
+        } else if ("strike".equals(operation))  {
             x = Integer.parseInt(payload[index++]);
             y = Integer.parseInt(payload[index++]);
+//            System.out.println("x = " + x);
+//            System.out.println("y = " + y);
             result = getOpponent(socket)
                 .strike(x, y);
+//            System.out.println("result = " + result);
+            respond(socket, result, type, x, y);
         }
+    }
+
+    public Result strike(WebSocket player, int x, int y) {
+        return players.get(player).strike(x, y);
+    }
+
+    private void respond(final WebSocket socket, final Result result, final Type type, final int x, final int y)
+        throws IOException {
         switch (result) {
+            case READY:
+                sendToOpponent(socket, "ready:opponent");
+                socket.send("ready:you");
             case PLACED:
                 final int[] dimensions = type.dimensions();
-                socket.send(String.format("placed:%s:%s:%s:%s", x, y, dimensions[0], dimensions[1]));
+                socket.send(String.format("placed:%s:%s:%s:%s:%s", type, x, y, dimensions[0], dimensions[1]));
                 break;
             case VICTORY:
+                socket.send(String.format("boom:%s:%s", x, y));
                 socket.send("you win");
-                getOpponent(socket).getSocket().send("you lose");
+                sendToOpponent(socket, "you lose");
                 break;
             case HIT:
                 socket.send(String.format("boom:%s:%s", x, y));
-                getOpponent(socket).getSocket().send(String.format("ouch:%s:%s", x, y));
+                sendToOpponent(socket, String.format("ouch:%s:%s", x, y));
                 break;
             case MISS:
                 socket.send(String.format("whiff:%s:%s", x, y));
-                getOpponent(socket).getSocket().send(String.format("whew:%s:%s", x, y));
+                sendToOpponent(socket, String.format("whew:%s:%s", x, y));
                 break;
         }
     }
 
-    private Player getPlayer(final WebSocket socket) {
-        final Player player = players.get(socket);
-        if (player == null) {
-            throw new RuntimeException("Can't find the player.  What's wrong with me?");
+    private void sendToOpponent(final WebSocket socket, final String message) throws IOException {
+        final Player opponent = getOpponent(socket);
+        if(opponent != null) {
+            opponent.getSocket().send(message);
         }
-        return player;
+    }
+
+    private Player getPlayer(final WebSocket socket) {
+        return players.get(socket);
     }
 
     private Player getOpponent(final WebSocket socket) {
@@ -87,7 +123,8 @@ public class WarGame extends WebSocketApplication {
                 return webSocket.getValue();
             }
         }
-        throw new RuntimeException("Can't find the opponent.  What's wrong with me?");
+//        System.out.println("no opponent found");
+        return null;
     }
 
     @Override
