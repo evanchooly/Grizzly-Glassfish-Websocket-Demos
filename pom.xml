@@ -12,6 +12,7 @@
 
     <modules>
         <module>core</module>
+        <module>life</module>
         <module>war</module>
     </modules>
 
