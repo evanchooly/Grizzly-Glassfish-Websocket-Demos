@@ -19,6 +19,31 @@ function connectionProblems(err) {
         = "<span class=\"error\">We're having problems connecting to the server.  Reload to try reconnecting. "
         + err + "</span>";
 }
+
+function create(height, width, delay) {
+//    var table = "<table>"
+    for(var y = 0; y < height; y++) {
+//        table += "<tr>";
+        for(var x = 0; x < width; x++) {
+//            table += "<td id='" + y + "-" + x + "'>&nbsp;</td>";
+            document.getElementById(y + "-" + x).innerHTML = "&nbsp;";
+        }
+//        table += "</tr>";
+    }
+//    table += "</table>"
+//    document.getElementById("rounded").innerHTML = table;
+//    setValue("width", width);
+//    setValue("height", height);
+    setValue("delay", delay);
+}
+
+function setValue(id, value) {
+    document.getElementById(id).value = value;
+}
+function send(message, element) {
+    socket.send(message + ":" + element.value);
+}
+
 function set(x, y, on) {
     var id = x + "-" + y;
     var value;

@@ -10,6 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import com.sun.grizzly.tcp.Request;
+import com.sun.grizzly.websockets.DataFrame;
 import com.sun.grizzly.websockets.WebSocket;
 import com.sun.grizzly.websockets.WebSocketApplication;
 
@@ -17,7 +18,7 @@ public class LifeGame extends WebSocketApplication implements Runnable {
     private boolean[][] board;
     private int width;
     private int height;
-    private static boolean DEBUG = true;
+    private static boolean DEBUG = false;
     private boolean active;
     private int delay;
     private Timer timer;
@@ -26,24 +27,33 @@ public class LifeGame extends WebSocketApplication implements Runnable {
     public LifeGame(int x, int y) {
         width = x;
         height = y;
-        board = new boolean[height][width];
+        createBoard();
         active = true;
         delay = 100;
         service = Executors.newSingleThreadExecutor();
-        randomize();
         service.submit(this);
+    }
+
+    private void createBoard() {
+        board = new boolean[height][width];
+        randomize();
     }
 
     @Override
     public void onConnect(final WebSocket socket) {
         super.onConnect(socket);
+        sendBoard(socket);
+    }
+
+    private void sendBoard(final WebSocket socket) {
         StringBuilder builder = new StringBuilder();
-        for (int y = 0; y < board.length; y++) {
-            for (int x = 0; x < board[y].length; x++) {
-                builder.append(String.format("set(%s,%s,%s);", y, x, board[y][x]));
-            }
-        }
         try {
+            socket.send(String.format("create(%s,%s,%s);", height, width, delay));
+            for (int y = 0; y < board.length; y++) {
+                for (int x = 0; x < board[y].length; x++) {
+                    builder.append(String.format("set(%s,%s,%s);", y, x, board[y][x]));
+                }
+            }
             socket.send(builder.toString());
         } catch (IOException e) {
             try {
@@ -51,6 +61,27 @@ public class LifeGame extends WebSocketApplication implements Runnable {
             } catch (IOException e1) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    @Override
+    public void onMessage(final WebSocket socket, final DataFrame frame) throws IOException {
+        super.onMessage(socket, frame);
+        final String message = frame.getTextPayload();
+        if(message.startsWith("delay")) {
+            delay = Integer.parseInt(message.split(":")[1]);
+            broadcast("setValue('delay', " + delay + ");");
+        } else if (message.startsWith("width")) {
+            width = Integer.parseInt(message.split(":")[1]);
+            createBoard();
+            sendBoard(socket);
+        } else if (message.startsWith("height")) {
+            height = Integer.parseInt(message.split(":")[1]);
+            createBoard();
+            sendBoard(socket);
+        } else if("randomize".equals(message)) {
+            createBoard();
+            sendBoard(socket);
         }
     }
 

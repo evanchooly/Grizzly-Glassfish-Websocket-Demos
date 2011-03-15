@@ -12,7 +12,7 @@ import com.sun.grizzly.websockets.WebSocketEngine;
 public class Main {
     private static SelectorThread createSelectorThread(int port)
             throws IOException, InstantiationException {
-        WebSocketEngine.getEngine().register(new LifeGame(70, 35));
+        WebSocketEngine.getEngine().register(new LifeGame(70, 40));
         SelectorThread st = new SelectorThread();
 
         st.setSsBackLog(8192);
