@@ -1,4 +1,4 @@
-package com.antwerkz.wsdemos.war;
+package com.antwerkz.wsdemos.life;
 
 import java.io.IOException;
 
@@ -12,7 +12,7 @@ import com.sun.grizzly.websockets.WebSocketEngine;
 public class Main {
     private static SelectorThread createSelectorThread(int port)
             throws IOException, InstantiationException {
-        WebSocketEngine.getEngine().register(new WarGame());
+        WebSocketEngine.getEngine().register(new LifeGame(70, 35));
         SelectorThread st = new SelectorThread();
 
         st.setSsBackLog(8192);

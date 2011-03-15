@@ -1,52 +1,112 @@
 package com.antwerkz.wsdemos.life;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.Timer;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class LifeGame {
+import com.sun.grizzly.tcp.Request;
+import com.sun.grizzly.websockets.WebSocket;
+import com.sun.grizzly.websockets.WebSocketApplication;
+
+public class LifeGame extends WebSocketApplication implements Runnable {
     private boolean[][] board;
-    private int dimension;
+    private int width;
+    private int height;
     private static boolean DEBUG = true;
     private boolean active;
+    private int delay;
+    private Timer timer;
+    private ExecutorService service;
 
-    public LifeGame(int size) {
-        dimension = size;
-        board = new boolean[size][size];
+    public LifeGame(int x, int y) {
+        width = x;
+        height = y;
+        board = new boolean[height][width];
         active = true;
+        delay = 100;
+        service = Executors.newSingleThreadExecutor();
+        randomize();
+        service.submit(this);
     }
 
-    public void generation() {
-        List<Runnable> actions = new ArrayList<Runnable>();
-        for (int x = 0; x < board.length; x++) {
-            for (int y = 0; y < board[x].length; y++) {
-                final int neighbors = getNeighbors(x, y);
-                if (neighbors < 2 && board[x][y]) {
-                    actions.add(turnOff(x, y));
-//                } else if(board[x][y] && (neighbors == 2 || neighbors == 3)) {
-                } else if (board[x][y] && neighbors > 3) {
-                    actions.add(turnOff(x, y));
-                } else if (!board[x][y] && neighbors == 3) {
-                    actions.add(turnOn(x, y));
-                }
-
+    @Override
+    public void onConnect(final WebSocket socket) {
+        super.onConnect(socket);
+        StringBuilder builder = new StringBuilder();
+        for (int y = 0; y < board.length; y++) {
+            for (int x = 0; x < board[y].length; x++) {
+                builder.append(String.format("set(%s,%s,%s);", y, x, board[y][x]));
             }
         }
-        for (Runnable action : actions) {
-            action.run();
+        try {
+            socket.send(builder.toString());
+        } catch (IOException e) {
+            try {
+                socket.close();
+            } catch (IOException e1) {
+                e.printStackTrace();
+            }
         }
-        if (DEBUG) {
-            dump();
+    }
+
+    public void run() {
+        while (active) {
+            List<Runnable> actions = new ArrayList<Runnable>();
+            StringBuilder builder = new StringBuilder();
+            for (int y = 0; y < board.length; y++) {
+                for (int x = 0; x < board[y].length; x++) {
+                    final int neighbors = getNeighbors(x, y);
+                    if (board[y][x] && (neighbors < 2 || neighbors > 3)) {
+                        actions.add(turnOff(x, y));
+                        builder.append(String.format("set(%s,%s,%s);", y, x, false));
+                    } else if (!board[y][x] && neighbors == 3) {
+                        actions.add(turnOn(x, y));
+                        builder.append(String.format("set(%s,%s,%s);", y, x, true));
+                    }
+                }
+            }
+            for (Runnable action : actions) {
+                action.run();
+            }
+            if (DEBUG) {
+                dump();
+            }
+            active = !actions.isEmpty();
+            broadcast(builder.toString());
+            try {
+                Thread.sleep(delay);
+            } catch (InterruptedException e) {
+            }
         }
-        active = !actions.isEmpty();
+        randomize();
+        service.submit(this);
+    }
+
+    private void broadcast(final String message) {
+        for (WebSocket socket : getWebSockets()) {
+            try {
+                socket.send(message);
+            } catch (IOException e) {
+                e.printStackTrace();
+                try {
+                    socket.close();
+                } catch (IOException e1) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
     private Runnable turnOn(final int x, final int y) {
         return new Runnable() {
             @Override
             public void run() {
-                board[x][y] = true;
+                set(x, y, true);
             }
         };
     }
@@ -55,12 +115,12 @@ public class LifeGame {
         return new Runnable() {
             @Override
             public void run() {
-                board[x][y] = false;
+                set(x, y, false);
             }
         };
     }
 
-    private int getNeighbors(final int x, final int y) {
+    private int getNeighbors(int x, int y) {
         int count = 0;
         for (int i = -1; i <= 1; i++) {
             for (int j = -1; j <= 1; j++) {
@@ -69,20 +129,20 @@ public class LifeGame {
                 }
             }
         }
-        if (board[x][y]) {
+        if (board[y][x]) {
             count--; // to account for "this" one
         }
         return count;
     }
 
-    private boolean isAlive(final int x, final int y) {
-        return x >= 0 && x < dimension
-            && y >= 0 && y < dimension
-            && board[x][y];
+    private boolean isAlive(int x, int y) {
+        return x >= 0 && x < width
+            && y >= 0 && y < height
+            && board[y][x];
     }
 
     public void dump() {
-        char[] chars = new char[dimension + 2];
+        char[] chars = new char[width + 2];
         Arrays.fill(chars, '-');
         System.out.println(new String(chars));
         for (boolean[] row : board) {
@@ -93,20 +153,23 @@ public class LifeGame {
             System.out.println("|");
         }
         System.out.println(new String(chars));
+        for(int index = 0; index < 47 - board.length; index++) {
+            System.out.println();
+        }
     }
 
-    public void set(final int x, final int y) {
-        board[x][y] = true;
+    public void set(int x, int y, final boolean b) {
+        board[y][x] = b;
     }
 
     public void randomize() {
         Random random = new Random();
-        int count = random.nextInt(dimension * dimension);
+        int count = random.nextInt(width * height);
         while (count > 0) {
-            int x = random.nextInt(dimension);
-            int y = random.nextInt(dimension);
-            if (!board[x][y]) {
-                board[x][y] = true;
+            int x = random.nextInt(width);
+            int y = random.nextInt(height);
+            if (!board[y][x]) {
+                board[y][x] = true;
                 count--;
             }
         }
@@ -115,5 +178,10 @@ public class LifeGame {
 
     public boolean active() {
         return active;
+    }
+
+    @Override
+    public boolean isApplicationRequest(Request request) {
+        return request.requestURI().equals("/life");
     }
 }
