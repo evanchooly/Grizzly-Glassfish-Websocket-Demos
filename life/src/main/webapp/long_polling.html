@@ -1,14 +1,16 @@
 <html>
     <head>
         <link rel="stylesheet" type="text/css" href="style.css">
-        <script type="text/javascript" src="js/life.js"></script>
+        <script type="text/javascript" src="js/prototype.js"></script>
+        <script type="text/javascript" src="js/behaviour.js"></script>
+        <script type="text/javascript" src="js/life-polling.js"></script>
     </head>
     <body>
         <p id="welcome"></p>
         <table>
             <tr>
                 <td><input id='delay' type='text' onchange="javascript:send('delay',this);"> </td>
-                <td><input type='button' value="Randomize" onclick="javascript:socket.send('randomize');"> </td>
+                <td><input id='randomize' type='button' value="Randomize" onclick="javascript:socket.send('randomize');"> </td>
             </tr>
         </table>
         <div class="rounded">

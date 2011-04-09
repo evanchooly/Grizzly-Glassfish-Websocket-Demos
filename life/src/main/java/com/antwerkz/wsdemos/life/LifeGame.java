@@ -5,10 +5,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.Timer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.sun.grizzly.comet.CometContext;
+import com.sun.grizzly.comet.CometEngine;
 import com.sun.grizzly.tcp.Request;
 import com.sun.grizzly.websockets.DataFrame;
 import com.sun.grizzly.websockets.WebSocket;
@@ -29,7 +32,7 @@ public class LifeGame extends WebSocketApplication implements Runnable {
         height = y;
         createBoard();
         active = true;
-        delay = 100;
+        delay = 1000;
         service = Executors.newSingleThreadExecutor();
         service.submit(this);
     }
@@ -48,19 +51,30 @@ public class LifeGame extends WebSocketApplication implements Runnable {
     private void sendBoard(final WebSocket socket) {
         StringBuilder builder = new StringBuilder();
         try {
-            socket.send(String.format("create(%s,%s,%s);", height, width, delay));
+            final String message = String.format("create(%s,%s,%s);", height, width, delay);
+            socket.send(message);
+            notify(message);
             for (int y = 0; y < board.length; y++) {
                 for (int x = 0; x < board[y].length; x++) {
                     builder.append(String.format("set(%s,%s,%s);", y, x, board[y][x]));
                 }
             }
             socket.send(builder.toString());
+            notify(builder.toString());
         } catch (IOException e) {
             try {
                 socket.close();
             } catch (IOException e1) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    private void notify(final String message) throws IOException {
+        if(CometServlet.contextPath != null) {
+            final CometContext cometContext = CometEngine.getEngine().getCometContext(CometServlet.contextPath);
+            final Set set = cometContext.getCometHandlers();
+            cometContext.notify(message);
         }
     }
 
@@ -110,8 +124,11 @@ public class LifeGame extends WebSocketApplication implements Runnable {
             active = !actions.isEmpty();
             broadcast(builder.toString());
             try {
+                notify(builder.toString());
                 Thread.sleep(delay);
             } catch (InterruptedException e) {
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
         randomize();

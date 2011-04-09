@@ -5,7 +5,7 @@ try {
     } else {
         socket = new WebSocket("ws://localhost:8080/life");
         socket.onmessage = function (evt) {
-            process(evt.data);
+            eval(evt.data);
         };
         socket.onclose = function (evt) {
             connectionProblems();
@@ -21,19 +21,11 @@ function connectionProblems(err) {
 }
 
 function create(height, width, delay) {
-//    var table = "<table>"
     for(var y = 0; y < height; y++) {
-//        table += "<tr>";
         for(var x = 0; x < width; x++) {
-//            table += "<td id='" + y + "-" + x + "'>&nbsp;</td>";
             document.getElementById(y + "-" + x).innerHTML = "&nbsp;";
         }
-//        table += "</tr>";
     }
-//    table += "</table>"
-//    document.getElementById("rounded").innerHTML = table;
-//    setValue("width", width);
-//    setValue("height", height);
     setValue("delay", delay);
 }
 
@@ -57,7 +49,4 @@ function set(x, y, on) {
     } catch(err) {
         alert("id = " + id + "\n" + err);
     }
-}
-function process(data) {
-    eval(data);
 }
