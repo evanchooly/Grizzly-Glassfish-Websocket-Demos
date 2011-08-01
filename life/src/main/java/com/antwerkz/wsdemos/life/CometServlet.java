@@ -14,11 +14,10 @@ import com.sun.grizzly.comet.CometContext;
 import com.sun.grizzly.comet.CometEngine;
 import com.sun.grizzly.comet.CometEvent;
 import com.sun.grizzly.comet.CometHandler;
-import com.sun.grizzly.websockets.WebSocketEngine;
 
-@WebServlet(urlPatterns = "/comet")
+@WebServlet(urlPatterns = CometServlet.CONTEXT_PATH)
 public class CometServlet extends HttpServlet {
-    private static final String CONTEXT_PATH = "/poll";
+    public static final String CONTEXT_PATH = "/poll";
     public static String contextPath;
 
     private class LifeHandler implements CometHandler<HttpServletResponse> {
@@ -62,14 +61,7 @@ public class CometServlet extends HttpServlet {
     }
 
     @Override
-    protected void doOptions(final HttpServletRequest req, final HttpServletResponse resp)
-        throws ServletException, IOException {
-        super.doOptions(req, resp);
-    }
-
-    @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse res)
-        throws ServletException, IOException {
+    protected void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
         LifeHandler handler = new LifeHandler();
         handler.attach(res);
         CometEngine engine = CometEngine.getEngine();
@@ -78,14 +70,7 @@ public class CometServlet extends HttpServlet {
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse res)
-        throws ServletException, IOException {
-        final String line = req.getReader().readLine();
-        System.out.println("CometServlet.doPost");
-        System.out.println("line = " + line);
-        CometEngine.getEngine().getCometContext(contextPath).notify(line);
-        PrintWriter writer = res.getWriter();
-        writer.write("success");
-        writer.flush();
+    protected void doPost(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
+        LifeGame.GAME.parse(req.getReader().readLine());
     }
 }

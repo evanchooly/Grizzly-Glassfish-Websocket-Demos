@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
 import java.util.Timer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -25,6 +24,7 @@ public class LifeGame extends WebSocketApplication implements Runnable {
     private int delay;
     private Timer timer;
     private ExecutorService service;
+    public static LifeGame GAME;
 
     public LifeGame(int x, int y) {
         width = x;
@@ -34,6 +34,7 @@ public class LifeGame extends WebSocketApplication implements Runnable {
         delay = 1000;
         service = Executors.newSingleThreadExecutor();
         service.submit(this);
+        GAME = this;
     }
 
     private void createBoard() {
@@ -47,50 +48,58 @@ public class LifeGame extends WebSocketApplication implements Runnable {
         sendBoard(socket);
     }
 
-    private void sendBoard(WebSocket socket) {
-        StringBuilder builder = new StringBuilder();
-        try {
-            final String message = String.format("create(%s,%s,%s);", height, width, delay);
-            socket.send(message);
-            notify(message);
-            for (int y = 0; y < board.length; y++) {
-                for (int x = 0; x < board[y].length; x++) {
-                    builder.append(String.format("set(%s,%s,%s);", y, x, board[y][x]));
-                }
-            }
-            socket.send(builder.toString());
-            notify(builder.toString());
-        } catch (IOException e) {
-            socket.close();
-        }
-    }
-
     private void notify(String message) throws IOException {
         if(CometServlet.contextPath != null) {
             final CometContext cometContext = CometEngine.getEngine().getCometContext(CometServlet.contextPath);
-            final Set set = cometContext.getCometHandlers();
+//            final Set set = cometContext.getCometHandlers();
             cometContext.notify(message);
         }
     }
 
     @Override
     public void onMessage(WebSocket socket, String frame) {
-        super.onMessage(socket, frame);
+        parse(frame);
+    }
+
+    public void parse(String frame) {
         if(frame.startsWith("delay")) {
             delay = Integer.parseInt(frame.split(":")[1]);
             broadcast("setValue('delay', " + delay + ");");
-        } else if (frame.startsWith("width")) {
-            width = Integer.parseInt(frame.split(":")[1]);
-            createBoard();
-            sendBoard(socket);
-        } else if (frame.startsWith("height")) {
-            height = Integer.parseInt(frame.split(":")[1]);
-            createBoard();
-            sendBoard(socket);
         } else if("randomize".equals(frame)) {
             createBoard();
-            sendBoard(socket);
+            sendBoard();
         }
+    }
+
+    private void sendBoard() {
+        final String table = buildBoard();
+        broadcast(table);
+        try {
+            notify(table);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendBoard(WebSocket socket) {
+        final String table = buildBoard();
+        socket.send(table);
+        try {
+            notify(table);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String buildBoard() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(String.format("create(%s,%s,%s);", height, width, delay));
+        for (int y = 0; y < board.length; y++) {
+            for (int x = 0; x < board[y].length; x++) {
+                builder.append(String.format("set(%s,%s,%s);", y, x, board[y][x]));
+            }
+        }
+        return builder.toString();
     }
 
     public void run() {
