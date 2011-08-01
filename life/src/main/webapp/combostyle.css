@@ -2,6 +2,10 @@ body {
     font-family: Courier,sans-serif;
 }
 
+#wstable {
+    float: left;
+}
+
 .placed {
     background-color: green;
     text-align: center;
@@ -22,22 +26,20 @@ body {
 }
 
 .rounded {
-    float: left;
-    display: inline-block;
-    margin-right: 3em;
     margin-bottom: 1em;
     border: 1px solid black;
-    padding: 1em;
+    max-width: 50%;
     -moz-border-radius: 10px;
     -webkit-border-radius: 10px;
+    font-size: xx-small;
+}
+
+td .rounded {
+    max-width: 50%;
 }
 
 table {
     border-width: 1px;
     /*border-spacing: 0;*/
     empty-cells: show;
-    border-color: black;
-}
-
-td {
 }

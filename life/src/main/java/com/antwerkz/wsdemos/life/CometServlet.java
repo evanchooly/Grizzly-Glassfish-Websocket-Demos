@@ -5,6 +5,7 @@ import java.io.PrintWriter;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -13,7 +14,9 @@ import com.sun.grizzly.comet.CometContext;
 import com.sun.grizzly.comet.CometEngine;
 import com.sun.grizzly.comet.CometEvent;
 import com.sun.grizzly.comet.CometHandler;
+import com.sun.grizzly.websockets.WebSocketEngine;
 
+@WebServlet(urlPatterns = "/comet")
 public class CometServlet extends HttpServlet {
     private static final String CONTEXT_PATH = "/poll";
     public static String contextPath;

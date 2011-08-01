@@ -1,12 +1,10 @@
 package com.antwerkz.wsdemos.war;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.sun.grizzly.tcp.Request;
-import com.sun.grizzly.websockets.DataFrame;
 import com.sun.grizzly.websockets.WebSocket;
 import com.sun.grizzly.websockets.WebSocketApplication;
 
@@ -16,39 +14,28 @@ public class WarGame extends WebSocketApplication {
     private Map<WebSocket, Player> players = new ConcurrentHashMap<WebSocket, Player>();
 
     @Override
-    public void onClose(final WebSocket socket) throws IOException {
+    public void onClose(WebSocket socket) {
         super.onClose(socket);
         players.remove(socket);
     }
 
     @Override
-    public void onConnect(final WebSocket socket) {
+    public void onConnect(WebSocket socket) {
         if (players.size() < 2 && players.put(socket, new Player(socket)) == null) {
             super.onConnect(socket);
             final Player opponent = getOpponent(socket);
             if(opponent != null) {
-                try {
-                    socket.send("ready:opponent");
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    throw new RuntimeException(e.getMessage(), e);
-                }
+                socket.send("ready:opponent");
             }
         } else {
-            try {
-                socket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-                throw new RuntimeException(e.getMessage(), e);
-            }
+            socket.close();
         }
     }
 
     @Override
-    public void onMessage(final WebSocket socket, final DataFrame frame) throws IOException {
-        final String textPayload = frame.getTextPayload();
-//        System.out.println("textPayload = " + textPayload);
-        final String[] payload = textPayload.split(":");
+    public void onMessage(WebSocket socket, String frame) {
+        //        System.out.println("textPayload = " + textPayload);
+        final String[] payload = frame.split(":");
 //        System.out.println("payload = " + Arrays.toString(payload));
         int index = 0;
         Result result;
@@ -80,8 +67,7 @@ public class WarGame extends WebSocketApplication {
         return players.get(player).strike(x, y);
     }
 
-    private void respond(final WebSocket socket, final Result result, final Type type, final int x, final int y)
-        throws IOException {
+    private void respond(WebSocket socket, Result result, Type type, int x, int y) {
         switch (result) {
             case READY:
                 sendToOpponent(socket, "ready:opponent");
@@ -106,18 +92,18 @@ public class WarGame extends WebSocketApplication {
         }
     }
 
-    private void sendToOpponent(final WebSocket socket, final String message) throws IOException {
+    private void sendToOpponent(WebSocket socket, String message) {
         final Player opponent = getOpponent(socket);
         if(opponent != null) {
             opponent.getSocket().send(message);
         }
     }
 
-    private Player getPlayer(final WebSocket socket) {
+    private Player getPlayer(WebSocket socket) {
         return players.get(socket);
     }
 
-    private Player getOpponent(final WebSocket socket) {
+    private Player getOpponent(WebSocket socket) {
         for (Entry<WebSocket, Player> webSocket : players.entrySet()) {
             if (!webSocket.getKey().equals(socket)) {
                 return webSocket.getValue();
@@ -128,7 +114,7 @@ public class WarGame extends WebSocketApplication {
     }
 
     @Override
-    public boolean isApplicationRequest(final Request request) {
+    public boolean isApplicationRequest(Request request) {
         return request.requestURI().equals("/war");
     }
 }

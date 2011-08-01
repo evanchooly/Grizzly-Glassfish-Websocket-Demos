@@ -13,7 +13,7 @@
     <modules>
         <module>core</module>
         <module>life</module>
-        <module>war</module>
+        <!--<module>war</module>-->
     </modules>
 
     <build>
@@ -65,6 +65,12 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
+                <groupId>javax</groupId>
+                <artifactId>javaee-web-api</artifactId>
+                <version>6.0</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
                 <groupId>com.sun.grizzly</groupId>
                 <artifactId>grizzly-websockets</artifactId>
                 <version>${grizzly.version}</version>
@@ -80,11 +86,6 @@
                 <version>${grizzly.version}</version>
             </dependency>
             <dependency>
-                <groupId>javax.servlet</groupId>
-                <artifactId>servlet-api</artifactId>
-                <version>2.5</version>
-            </dependency>
-            <dependency>
                 <groupId>org.testng</groupId>
                 <artifactId>testng</artifactId>
                 <version>5.14.2</version>
@@ -93,6 +94,6 @@
     </dependencyManagement>
 
     <properties>
-        <grizzly.version>1.9.32</grizzly.version>
+        <grizzly.version>1.9.37-SNAPSHOT</grizzly.version>
     </properties>
 </project>

@@ -13,7 +13,6 @@ import java.util.concurrent.Executors;
 import com.sun.grizzly.comet.CometContext;
 import com.sun.grizzly.comet.CometEngine;
 import com.sun.grizzly.tcp.Request;
-import com.sun.grizzly.websockets.DataFrame;
 import com.sun.grizzly.websockets.WebSocket;
 import com.sun.grizzly.websockets.WebSocketApplication;
 
@@ -43,12 +42,12 @@ public class LifeGame extends WebSocketApplication implements Runnable {
     }
 
     @Override
-    public void onConnect(final WebSocket socket) {
+    public void onConnect(WebSocket socket) {
         super.onConnect(socket);
         sendBoard(socket);
     }
 
-    private void sendBoard(final WebSocket socket) {
+    private void sendBoard(WebSocket socket) {
         StringBuilder builder = new StringBuilder();
         try {
             final String message = String.format("create(%s,%s,%s);", height, width, delay);
@@ -62,15 +61,11 @@ public class LifeGame extends WebSocketApplication implements Runnable {
             socket.send(builder.toString());
             notify(builder.toString());
         } catch (IOException e) {
-            try {
-                socket.close();
-            } catch (IOException e1) {
-                e.printStackTrace();
-            }
+            socket.close();
         }
     }
 
-    private void notify(final String message) throws IOException {
+    private void notify(String message) throws IOException {
         if(CometServlet.contextPath != null) {
             final CometContext cometContext = CometEngine.getEngine().getCometContext(CometServlet.contextPath);
             final Set set = cometContext.getCometHandlers();
@@ -79,21 +74,20 @@ public class LifeGame extends WebSocketApplication implements Runnable {
     }
 
     @Override
-    public void onMessage(final WebSocket socket, final DataFrame frame) throws IOException {
+    public void onMessage(WebSocket socket, String frame) {
         super.onMessage(socket, frame);
-        final String message = frame.getTextPayload();
-        if(message.startsWith("delay")) {
-            delay = Integer.parseInt(message.split(":")[1]);
+        if(frame.startsWith("delay")) {
+            delay = Integer.parseInt(frame.split(":")[1]);
             broadcast("setValue('delay', " + delay + ");");
-        } else if (message.startsWith("width")) {
-            width = Integer.parseInt(message.split(":")[1]);
+        } else if (frame.startsWith("width")) {
+            width = Integer.parseInt(frame.split(":")[1]);
             createBoard();
             sendBoard(socket);
-        } else if (message.startsWith("height")) {
-            height = Integer.parseInt(message.split(":")[1]);
+        } else if (frame.startsWith("height")) {
+            height = Integer.parseInt(frame.split(":")[1]);
             createBoard();
             sendBoard(socket);
-        } else if("randomize".equals(message)) {
+        } else if("randomize".equals(frame)) {
             createBoard();
             sendBoard(socket);
         }
@@ -135,18 +129,9 @@ public class LifeGame extends WebSocketApplication implements Runnable {
         service.submit(this);
     }
 
-    private void broadcast(final String message) {
+    private void broadcast(String message) {
         for (WebSocket socket : getWebSockets()) {
-            try {
-                socket.send(message);
-            } catch (IOException e) {
-                e.printStackTrace();
-                try {
-                    socket.close();
-                } catch (IOException e1) {
-                    e.printStackTrace();
-                }
-            }
+            socket.send(message);
         }
     }
 
@@ -206,7 +191,7 @@ public class LifeGame extends WebSocketApplication implements Runnable {
         }
     }
 
-    public void set(int x, int y, final boolean b) {
+    public void set(int x, int y, boolean b) {
         board[y][x] = b;
     }
 
