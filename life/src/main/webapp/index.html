@@ -1,13 +1,14 @@
 <html>
     <head>
         <link rel="stylesheet" type="text/css" href="style.css">
-        <script type="text/javascript" src="js/life.js"></script>
+        <script type="text/javascript" src="js/table.js"></script>
+        <script type="text/javascript" src="js/life-websocket.js"></script>
     </head>
     <body>
         <p id="welcome"></p>
         <table>
             <tr>
-                <td><input id='delay' type='text' onchange="javascript:send('delay',this);"> </td>
+                <td><input id='delay' type='text' onchange="javascript:socket.send('delay:' + this.value);"> </td>
                 <td><input type='button' value="Randomize" onclick="javascript:socket.send('randomize');"> </td>
             </tr>
         </table>
