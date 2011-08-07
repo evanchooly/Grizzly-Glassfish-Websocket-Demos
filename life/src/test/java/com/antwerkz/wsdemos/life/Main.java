@@ -40,7 +40,7 @@ public class Main {
         final SelectorThread st = createSelectorThread(8080);
 
         GrizzlyWebServer server = new GrizzlyWebServer(8081, "src/main/webapp");
-        server.addGrizzlyAdapter(new MyServletAdapter(), new String[]{"*", "/poll"});
+        server.addGrizzlyAdapter(new MyServletAdapter(), new String[]{"*", "/comet"});
         server.addAsyncFilter(new CometAsyncFilter());
 
         server.start();

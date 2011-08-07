@@ -2,6 +2,8 @@ package com.antwerkz.wsdemos.life;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
@@ -14,21 +16,36 @@ import com.sun.grizzly.comet.CometContext;
 import com.sun.grizzly.comet.CometEngine;
 import com.sun.grizzly.comet.CometEvent;
 import com.sun.grizzly.comet.CometHandler;
+import com.sun.grizzly.comet.DefaultNotificationHandler;
 
 @WebServlet(urlPatterns = CometServlet.CONTEXT_PATH)
 public class CometServlet extends HttpServlet {
-    public static final String CONTEXT_PATH = "/poll";
+    public static final String CONTEXT_PATH = "/comet";
     public static String contextPath;
+
+    private static class MyNotificationHandler extends DefaultNotificationHandler {
+        @Override
+        public void setThreadPool(ExecutorService threadPool) {
+            super.setThreadPool(threadPool);
+        }
+    }
 
     private class LifeHandler implements CometHandler<HttpServletResponse> {
         private HttpServletResponse response;
+        private boolean resume = true;
+
+        public LifeHandler(String resume) {
+            this.resume = resume == null ? true : Boolean.valueOf(resume);
+        }
 
         public void onEvent(CometEvent event) throws IOException {
             if (CometEvent.NOTIFY == event.getType()) {
                 PrintWriter writer = response.getWriter();
                 writer.write((String) event.attachment());
                 writer.flush();
-                event.getCometContext().resumeCometHandler(this);
+                if (resume) {
+                    event.getCometContext().resumeCometHandler(this);
+                }
             }
         }
 
@@ -37,8 +54,10 @@ public class CometServlet extends HttpServlet {
 
         public void onInterrupt(CometEvent event) throws IOException {
             PrintWriter writer = response.getWriter();
-            writer.write((String) event.attachment());
-            writer.flush();
+            if (writer != null && event != null && event.attachment() != null) {
+                writer.write((String) event.attachment());
+                writer.flush();
+            }
         }
 
         public void onTerminate(CometEvent event) throws IOException {
@@ -57,15 +76,25 @@ public class CometServlet extends HttpServlet {
         contextPath = context.getContextPath() + CONTEXT_PATH;
         CometEngine engine = CometEngine.getEngine();
         CometContext cometContext = engine.register(contextPath);
+        final MyNotificationHandler notificationHandler = new MyNotificationHandler();
+        notificationHandler.setBlockingNotification(false);
+        notificationHandler.setThreadPool(Executors.newFixedThreadPool(5));
+        cometContext.setNotificationHandler(notificationHandler);
         cometContext.setExpirationDelay(5 * 30 * 1000);
     }
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
-        LifeHandler handler = new LifeHandler();
-        handler.attach(res);
+        System.out.println("CometServlet.doGet");
+        res.setContentType("text/javascript");
+        res.setHeader("Cache-Control", "private");
+        res.setHeader("Pragma", "no-cache");
+
         CometEngine engine = CometEngine.getEngine();
         CometContext context = engine.getCometContext(contextPath);
+        
+        LifeHandler handler = new LifeHandler(req.getParameter("resume"));
+        handler.attach(res);
         context.addCometHandler(handler);
     }
 

@@ -1,20 +1,20 @@
 var life = {
-    'poll' : function() {
-        new Ajax.Request('http://localhost:8080/comet', {
+    'get' : function() {
+        new Ajax.Request('http://localhost:8080/async', {
             method : 'GET',
             onSuccess : life.update
         });
     },
     'post' : function(value) {
-        new Ajax.Request('http://localhost:8080/comet', {
+        new Ajax.Request('http://localhost:8080/async', {
             method : 'POST',
             postBody: value
         });
     },
     'update' : function(res) {
-//          alert(res);
-        eval(res.response);
-        life.poll();
+//        alert(res.responseText);
+        eval(res.responseText);
+//        life.get();
     }
 };
 var rules = {
@@ -30,4 +30,4 @@ var rules = {
     }
 };
 Behaviour.register(rules);
-Behaviour.addLoadEvent(life.poll);
+Behaviour.addLoadEvent(life.get);

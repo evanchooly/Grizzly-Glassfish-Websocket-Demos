@@ -8,12 +8,16 @@ import java.util.Random;
 import java.util.Timer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import javax.servlet.AsyncContext;
+import javax.servlet.AsyncEvent;
+import javax.servlet.AsyncListener;
+import javax.servlet.ServletResponse;
 
-import com.sun.grizzly.comet.CometContext;
 import com.sun.grizzly.comet.CometEngine;
 import com.sun.grizzly.tcp.Request;
 import com.sun.grizzly.websockets.WebSocket;
 import com.sun.grizzly.websockets.WebSocketApplication;
+import com.sun.grizzly.websockets.WebSocketEngine;
 
 public class LifeGame extends WebSocketApplication implements Runnable {
     private boolean[][] board;
@@ -24,17 +28,15 @@ public class LifeGame extends WebSocketApplication implements Runnable {
     private int delay;
     private Timer timer;
     private ExecutorService service;
-    public static LifeGame GAME;
+    public static final LifeGame GAME = new LifeGame(70, 40);
+    private final List<AsyncContext> contexts = new ArrayList<AsyncContext>();
 
     public LifeGame(int x, int y) {
         width = x;
         height = y;
         createBoard();
         active = true;
-        delay = 1000;
-        service = Executors.newSingleThreadExecutor();
-        service.submit(this);
-        GAME = this;
+        delay = 125;
     }
 
     private void createBoard() {
@@ -49,10 +51,8 @@ public class LifeGame extends WebSocketApplication implements Runnable {
     }
 
     private void notify(String message) throws IOException {
-        if(CometServlet.contextPath != null) {
-            final CometContext cometContext = CometEngine.getEngine().getCometContext(CometServlet.contextPath);
-//            final Set set = cometContext.getCometHandlers();
-            cometContext.notify(message);
+        if (CometServlet.contextPath != null) {
+            CometEngine.getEngine().getCometContext(CometServlet.contextPath).notify(message);
         }
     }
 
@@ -62,10 +62,10 @@ public class LifeGame extends WebSocketApplication implements Runnable {
     }
 
     public void parse(String frame) {
-        if(frame.startsWith("delay")) {
+        if (frame.startsWith("delay")) {
             delay = Integer.parseInt(frame.split(":")[1]);
             broadcast("setValue('delay', " + delay + ");");
-        } else if("randomize".equals(frame)) {
+        } else if ("randomize".equals(frame)) {
             createBoard();
             sendBoard();
         }
@@ -142,6 +142,18 @@ public class LifeGame extends WebSocketApplication implements Runnable {
         for (WebSocket socket : getWebSockets()) {
             socket.send(message);
         }
+        List<AsyncContext> list;
+        synchronized (contexts) {
+            list = new ArrayList<AsyncContext>(contexts);
+        }
+        for (AsyncContext async : list) {
+            try {
+                async.getResponse().getWriter().println(message);
+            } catch (IOException e) {
+                e.printStackTrace();
+                async.complete();
+            }
+        }
     }
 
     private Runnable turnOn(final int x, final int y) {
@@ -195,7 +207,7 @@ public class LifeGame extends WebSocketApplication implements Runnable {
             System.out.println("|");
         }
         System.out.println(new String(chars));
-        for(int index = 0; index < 47 - board.length; index++) {
+        for (int index = 0; index < 47 - board.length; index++) {
             System.out.println();
         }
     }
@@ -225,5 +237,48 @@ public class LifeGame extends WebSocketApplication implements Runnable {
     @Override
     public boolean isApplicationRequest(Request request) {
         return request.requestURI().equals("/life");
+    }
+
+    public void add(AsyncContext asyncContext) {
+        asyncContext.addListener(new AsyncListener() {
+            @Override
+            public void onComplete(AsyncEvent asyncEvent) throws IOException {
+                final ServletResponse response = asyncEvent.getAsyncContext().getResponse();
+                response.flushBuffer();
+                response.getWriter().flush();
+                response.getWriter().close();
+            }
+
+            @Override
+            public void onTimeout(AsyncEvent asyncEvent) throws IOException {
+                System.out.println("LifeGame.onTimeout");
+                contexts.remove(this);
+            }
+
+            @Override
+            public void onError(AsyncEvent asyncEvent) throws IOException {
+                System.out.println("LifeGame.onError");
+            }
+
+            @Override
+            public void onStartAsync(AsyncEvent asyncEvent) throws IOException {
+                System.out.println("LifeGame.onStartAsync");
+            }
+        });
+        synchronized (contexts) {
+            contexts.add(asyncContext);
+        }
+    }
+
+    public void stop() {
+        active = false;
+        service.shutdownNow();
+        WebSocketEngine.getEngine().unregister(this);
+    }
+
+    public void start() {
+        active = true;
+        service = Executors.newSingleThreadExecutor();
+        service.submit(this);
     }
 }

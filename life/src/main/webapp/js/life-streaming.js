@@ -1,8 +1,8 @@
 var life = {
     'poll' : function() {
-        new Ajax.Request('http://localhost:8080/comet', {
+        new Ajax.Request('http://localhost:8080/comet?resume=false', {
             method : 'GET',
-            onSuccess : life.update
+            onInteractive : life.update
         });
     },
     'post' : function(value) {
@@ -14,7 +14,6 @@ var life = {
     'update' : function(res) {
 //          alert(res);
         eval(res.response);
-        life.poll();
     }
 };
 var rules = {

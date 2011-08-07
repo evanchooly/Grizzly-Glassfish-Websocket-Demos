@@ -11,6 +11,13 @@ public class WebSocketServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         super.init();
-        WebSocketEngine.getEngine().register(new LifeGame(70, 40));
+        WebSocketEngine.getEngine().register(LifeGame.GAME);
+        LifeGame.GAME.start();
+    }
+
+    @Override
+    public void destroy() {
+        System.out.println("WebSocketServlet.destroy");
+        LifeGame.GAME.stop();
     }
 }
