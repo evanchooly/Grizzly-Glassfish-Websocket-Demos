@@ -1,11 +1,13 @@
 package com.antwerkz.wsdemos.life;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.Timer;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.servlet.AsyncContext;
@@ -28,6 +30,7 @@ public class LifeGame extends WebSocketApplication implements Runnable {
     private int delay;
     private Timer timer;
     private ExecutorService service;
+    private ExecutorService notifier;
     public static final LifeGame GAME = new LifeGame(70, 40);
     private final List<AsyncContext> contexts = new ArrayList<AsyncContext>();
 
@@ -138,21 +141,36 @@ public class LifeGame extends WebSocketApplication implements Runnable {
         service.submit(this);
     }
 
-    private void broadcast(String message) {
-        for (WebSocket socket : getWebSockets()) {
-            socket.send(message);
+    private void broadcast(final String message) {
+        for (final WebSocket socket : getWebSockets()) {
+            notifier.submit(new Callable<Object>() {
+                @Override
+                public Object call() throws Exception {
+                    socket.send(message);
+                    return null;
+                }
+            });
         }
         List<AsyncContext> list;
         synchronized (contexts) {
             list = new ArrayList<AsyncContext>(contexts);
         }
-        for (AsyncContext async : list) {
-            try {
-                async.getResponse().getWriter().println(message);
-            } catch (IOException e) {
-                e.printStackTrace();
-                async.complete();
-            }
+        for (final AsyncContext async : list) {
+            notifier.submit(new Callable<Object>() {
+                @Override
+                public Object call() throws Exception {
+                    try {
+                        final PrintWriter writer = async.getResponse().getWriter();
+                        writer.println(message);
+                        writer.flush();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        async.complete();
+                        contexts.remove(async);
+                    }
+                    return null;
+                }
+            });
         }
     }
 
@@ -280,5 +298,6 @@ public class LifeGame extends WebSocketApplication implements Runnable {
         active = true;
         service = Executors.newSingleThreadExecutor();
         service.submit(this);
+        notifier = Executors.newFixedThreadPool(10);
     }
 }

@@ -1,8 +1,8 @@
 var life = {
-    'get' : function() {
+    "poll" : function() {
         new Ajax.Request('http://localhost:8080/async', {
             method : 'GET',
-            onSuccess : life.update
+            onInteractive : life.update
         });
     },
     'post' : function(value) {
@@ -13,8 +13,7 @@ var life = {
     },
     'update' : function(res) {
 //        alert(res.responseText);
-        eval(res.responseText);
-//        life.get();
+        eval(res.response);
     }
 };
 var rules = {
@@ -30,4 +29,4 @@ var rules = {
     }
 };
 Behaviour.register(rules);
-Behaviour.addLoadEvent(life.get);
+Behaviour.addLoadEvent(life.poll);

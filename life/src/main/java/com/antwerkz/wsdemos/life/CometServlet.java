@@ -85,7 +85,6 @@ public class CometServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
-        System.out.println("CometServlet.doGet");
         res.setContentType("text/javascript");
         res.setHeader("Cache-Control", "private");
         res.setHeader("Pragma", "no-cache");
