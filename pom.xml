@@ -37,31 +37,6 @@
         </pluginManagement>
     </build>
 
-    <repositories>
-        <repository>
-            <id>glassfish</id>
-            <name>glassfish</name>
-            <url>http://download.java.net/maven/glassfish</url>
-        </repository>
-        <repository>
-            <id>repository.jboss.org</id>
-            <name>JBoss Maven Repository</name>
-            <url>http://repository.jboss.org/maven2</url>
-        </repository>
-        <repository>
-            <id>antwerkz</id>
-            <url>http://antwerkz.com/</url>
-        </repository>
-        <repository>
-            <id>maven.annotation.rg</id>
-            <url>http://maven-annotation-plugin.googlecode.com/svn/trunk/mavenrepo</url>
-        </repository>
-        <repository>
-            <id>jfrog</id>
-            <url>http://www.jfrog.org/artifactory/plugins-releases</url>
-        </repository>
-    </repositories>
-
     <dependencyManagement>
         <dependencies>
             <dependency>

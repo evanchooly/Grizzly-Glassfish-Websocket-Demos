@@ -11,6 +11,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 import com.sun.grizzly.comet.CometContext;
 import com.sun.grizzly.comet.CometEngine;
@@ -91,7 +92,8 @@ public class CometServlet extends HttpServlet {
 
         CometEngine engine = CometEngine.getEngine();
         CometContext context = engine.getCometContext(contextPath);
-        
+
+        final HttpSession session = req.getSession();
         LifeHandler handler = new LifeHandler(req.getParameter("resume"));
         handler.attach(res);
         context.addCometHandler(handler);

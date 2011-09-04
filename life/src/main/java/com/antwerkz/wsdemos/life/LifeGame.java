@@ -47,6 +47,10 @@ public class LifeGame extends WebSocketApplication implements Runnable {
         randomize();
     }
 
+    public boolean[][] getBoard() {
+        return board;
+    }
+
     @Override
     public void onConnect(WebSocket socket) {
         super.onConnect(socket);
@@ -85,13 +89,7 @@ public class LifeGame extends WebSocketApplication implements Runnable {
     }
 
     private void sendBoard(WebSocket socket) {
-        final String table = buildBoard();
-        socket.send(table);
-        try {
-            notify(table);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        send(socket, buildBoard());
     }
 
     private String buildBoard() {
@@ -107,30 +105,13 @@ public class LifeGame extends WebSocketApplication implements Runnable {
 
     public void run() {
         while (active) {
-            List<Runnable> actions = new ArrayList<Runnable>();
-            StringBuilder builder = new StringBuilder();
-            for (int y = 0; y < board.length; y++) {
-                for (int x = 0; x < board[y].length; x++) {
-                    final int neighbors = getNeighbors(x, y);
-                    if (board[y][x] && (neighbors < 2 || neighbors > 3)) {
-                        actions.add(turnOff(x, y));
-                        builder.append(String.format("set(%s,%s,%s);", y, x, false));
-                    } else if (!board[y][x] && neighbors == 3) {
-                        actions.add(turnOn(x, y));
-                        builder.append(String.format("set(%s,%s,%s);", y, x, true));
-                    }
-                }
-            }
-            for (Runnable action : actions) {
-                action.run();
-            }
+            final String builder = generation();
             if (DEBUG) {
                 dump();
             }
-            active = !actions.isEmpty();
-            broadcast(builder.toString());
+            broadcast(builder);
             try {
-                notify(builder.toString());
+                notify(builder);
                 Thread.sleep(delay);
             } catch (InterruptedException e) {
             } catch (IOException e) {
@@ -141,37 +122,68 @@ public class LifeGame extends WebSocketApplication implements Runnable {
         service.submit(this);
     }
 
-    private void broadcast(final String message) {
-        for (final WebSocket socket : getWebSockets()) {
-            notifier.submit(new Callable<Object>() {
-                @Override
-                public Object call() throws Exception {
-                    socket.send(message);
-                    return null;
+    public String generation() {
+        StringBuilder builder = new StringBuilder();
+        List<Runnable> actions = new ArrayList<Runnable>();
+        for (int y = 0; y < board.length; y++) {
+            for (int x = 0; x < board[y].length; x++) {
+                final int neighbors = getNeighbors(x, y);
+                if (board[y][x] && (neighbors < 2 || neighbors > 3)) {
+                    actions.add(turnOff(x, y));
+                    builder.append(String.format("set(%s,%s,%s);", y, x, false));
+                } else if (!board[y][x] && neighbors == 3) {
+                    actions.add(turnOn(x, y));
+                    builder.append(String.format("set(%s,%s,%s);", y, x, true));
                 }
-            });
+            }
+        }
+        active = !actions.isEmpty();
+        for (Runnable action : actions) {
+            action.run();
+        }
+        return builder.toString();
+    }
+
+    private void broadcast(String message) {
+        for (final WebSocket socket : getWebSockets()) {
+            send(socket, message);
         }
         List<AsyncContext> list;
         synchronized (contexts) {
             list = new ArrayList<AsyncContext>(contexts);
         }
         for (final AsyncContext async : list) {
-            notifier.submit(new Callable<Object>() {
-                @Override
-                public Object call() throws Exception {
-                    try {
-                        final PrintWriter writer = async.getResponse().getWriter();
-                        writer.println(message);
-                        writer.flush();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        async.complete();
-                        contexts.remove(async);
-                    }
-                    return null;
-                }
-            });
+            send(async, message);
         }
+    }
+
+    private void send(final WebSocket socket, final String message) {
+        notifier.submit(new Callable<Object>() {
+            @Override
+            public Object call() throws Exception {
+                socket.send(message);
+                return null;
+            }
+        });
+    }
+
+    private void send(final AsyncContext async, final String message) {
+        notifier.submit(new Callable<Object>() {
+            @Override
+            public Object call() throws Exception {
+                try {
+                    final PrintWriter writer = async.getResponse().getWriter();
+                    writer.println(message);
+                    writer.flush();
+                    async.complete();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    async.complete();
+                    contexts.remove(async);
+                }
+                return null;
+            }
+        });
     }
 
     private Runnable turnOn(final int x, final int y) {
@@ -234,16 +246,19 @@ public class LifeGame extends WebSocketApplication implements Runnable {
         board[y][x] = b;
     }
 
+    public void clear() {
+        for (boolean[] booleans : board) {
+            for (int j = 0; j < booleans.length; j++) {
+                booleans[j] = false;
+            }
+        }
+    }
+    
     public void randomize() {
         Random random = new Random();
         int count = random.nextInt(width * height);
-        while (count > 0) {
-            int x = random.nextInt(width);
-            int y = random.nextInt(height);
-            if (!board[y][x]) {
-                board[y][x] = true;
-                count--;
-            }
+        while (count-- > 0) {
+            board[random.nextInt(height)][random.nextInt(width)] = true;
         }
         active = true;
     }

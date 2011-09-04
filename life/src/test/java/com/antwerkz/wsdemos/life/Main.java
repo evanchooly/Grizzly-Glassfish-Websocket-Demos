@@ -52,7 +52,7 @@ public class Main {
     private static class MyServletAdapter extends ServletAdapter {
         public MyServletAdapter() {
             super("src/main/webapp", new ServletContextImpl(),new HashMap<String,String>(), new HashMap<String,String>(),
-                new ArrayList<String>(), true);
+                new ArrayList<String>());
             setContextPath("/");
             addRootFolder("src/main/webapp");
             setServletInstance(new CometServlet());

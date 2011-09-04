@@ -2,7 +2,7 @@ var life = {
     "poll" : function() {
         new Ajax.Request('http://localhost:8080/async', {
             method : 'GET',
-            onInteractive : life.update
+            onComplete : life.update
         });
     },
     'post' : function(value) {
@@ -14,6 +14,7 @@ var life = {
     'update' : function(res) {
 //        alert(res.responseText);
         eval(res.response);
+        life.poll();
     }
 };
 var rules = {

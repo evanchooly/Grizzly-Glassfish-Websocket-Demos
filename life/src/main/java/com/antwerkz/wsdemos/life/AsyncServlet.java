@@ -1,7 +1,6 @@
 package com.antwerkz.wsdemos.life;
 
 import java.io.IOException;
-import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -20,13 +19,12 @@ public class AsyncServlet extends HttpServlet {
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse res) throws IOException {
         res.setContentType("text/javascript");
         res.setHeader("Cache-Control", "private");
         res.setHeader("Pragma", "no-cache");
         
         LifeGame.GAME.add(req.startAsync());
-
         LifeGame.GAME.parse(req.getReader().readLine());
     }
 }
