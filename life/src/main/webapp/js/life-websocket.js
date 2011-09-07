@@ -11,7 +11,6 @@ try {
         }
     }
 } catch(err) {
-    al
     connectionProblems(err);
 }
 function connectionProblems(err) {
